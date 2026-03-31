@@ -7,41 +7,87 @@ const headers = {
   'Notion-Version': '2022-06-28',
 };
 
-function toNotion(f) {
-  const r = t => [{ text: { content: t || '' } }];
-  // 多寵物完整資訊
-  const petDetail = (f.pets||[]).length > 0
-    ? f.pets.map(p=>`${p.name}(${p.type})`).join('、')
-    : (f.寵物名稱 ? `${f.寵物名稱}(${f.寵物種類||'其他'})` : '');
+// 所有家訪表欄位對應 Notion 欄位名稱
+const FIELD_MAP = {
+  // 通用
+  vaccine:     '疫苗驅蟲',
+  neutered:    '是否結紮',
+  withPets:    '可與其他寵物相處',
+  withKids:    '與小孩相處',
+  snack:       '食物過敏',
+  mealHabit:   '用餐習慣',
+  mealNote:    '用餐情況',
+  personality: '個性描述',
+  health:      '健康狀況/用藥',
+  aggressive:  '攻擊性',
+  destructive: '拆家行為',
+  anxiety:     '分離焦慮',
+  special:     '特殊注意事項',
+  vet:         '常去動物醫院',
+  contact:     '緊急聯絡人',
+  insurance:   '寵物保險',
+  keyHandover: '鑰匙交付方式',
+  camera:      '攝影機需求',
+  // 安親寄宿專屬
+  sleepHabit:  '睡眠習慣',
+  carReact:    '對車輛反應',
+  dogReact:    '對狗狗反應',
+  streetReact: '對街道反應',
+  // 到府照顧 / 陪伴散步 專屬
+  timeSlot:    '指定時段',
+  restArea:    '休息區域',
+  cleanArea:   '清理區域',
+  catLitter:   '貓砂處理',
+  comfort:     '安撫方式',
+  extraService:'其他服務',
+  multiPet:    '多寵相處',
+  // 陪伴散步專屬
+  humanReact:  '對陌生人反應',
+  walkRoute:   '散步路線',
+  // 美容專屬
+  skinAllergy: '皮膚過敏',
+  shampoo:     '洗毛精提供',
+  nailTrim:    '剪指甲',
+  pawTrim:     '修腳底毛',
+  buttTrim:    '修屁股毛',
+  // 圖片
+  imageUrls:   '圖片網址',
+};
 
-  return {
-    '家訪表名稱':     { title: r(f.title || '') },
-    '飼主姓名':       { rich_text: r(f.飼主姓名 || '') },
-    '飼主電話':       { phone_number: f.飼主電話 || null },
-    '緊急聯絡人':     { rich_text: r(f.contact || '') },
-    '寵物名稱':       { rich_text: r(f.寵物名稱 || '') },
-    '寵物種類':       { select: f.寵物種類 ? { name: f.寵物種類 } : null },
-    '寵物詳細資訊':   { rich_text: r(petDetail) },   // 儲存完整多寵物資訊
-    '預約ID':         { rich_text: r(f.bookingId || '') }, // ← 關鍵：儲存對應預約ID
-    '服務類型':       { select: f.服務類型 ? { name: f.服務類型 } : null },
-    '是否結紮':       { select: f.neutered ? { name: f.neutered } : null },
-    '疫苗驅蟲':       { select: f.vaccine ? { name: f.vaccine } : null },
-    '可與其他寵物相處': { select: f.withPets ? { name: f.withPets } : null },
-    '食物過敏':       { rich_text: r(f.snack || '') },
-    '用餐習慣':       { rich_text: r(f.mealHabit || '') },
-    '個性描述':       { rich_text: r(f.personality || '') },
-    '健康狀況/用藥':  { rich_text: r(f.health || '') },
-    '分離焦慮':       { select: f.anxiety ? { name: f.anxiety } : null },
-    '攻擊性':         { select: f.aggressive ? { name: f.aggressive } : null },
-    '特殊注意事項':   { rich_text: r(f.special || '') },
-    '常去動物醫院':   { rich_text: r(f.vet || '') },
-    '寵物保險':       { select: f.insurance ? { name: f.insurance } : null },
-    '鑰匙交付方式':   { rich_text: r(f.keyHandover || '') },
-    '家訪完成':       { checkbox: !!f.done },
-    // 額外欄位（各服務類型專屬）
-    '緊急聯絡人':     { rich_text: r(f.contact || '') },
+// Select 欄位（用 select，其餘用 rich_text）
+const SELECT_FIELDS = new Set(['vaccine','neutered','withPets','aggressive','anxiety','insurance']);
+
+function toNotion(f) {
+  const r = t => [{ text: { content: (t || '').slice(0, 2000) } }];
+  const petDetail = (f.pets || []).length > 0
+    ? f.pets.map(p => `${p.name}(${p.type})`).join('、')
+    : (f.寵物名稱 ? `${f.寵物名稱}(${f.寵物種類 || '其他'})` : '');
+
+  const props = {
+    '家訪表名稱':   { title: r(f.title || '') },
+    '飼主姓名':     { rich_text: r(f.飼主姓名 || '') },
+    '飼主電話':     { phone_number: f.飼主電話 || null },
+    '寵物名稱':     { rich_text: r(f.寵物名稱 || '') },
+    '寵物種類':     { select: f.寵物種類 ? { name: f.寵物種類 } : null },
+    '寵物詳細資訊': { rich_text: r(petDetail) },
+    '預約ID':       { rich_text: r(f.bookingId || '') },
+    '服務類型':     { select: f.服務類型 ? { name: f.服務類型 } : null },
+    '家訪完成':     { checkbox: !!f.done },
     ...(f.visitDate ? { '家訪日期': { date: { start: f.visitDate } } } : {}),
   };
+
+  // 動態寫入所有家訪欄位
+  for (const [key, notionField] of Object.entries(FIELD_MAP)) {
+    const val = f[key];
+    if (val === undefined || val === null) continue;
+    if (SELECT_FIELDS.has(key)) {
+      props[notionField] = val ? { select: { name: val } } : { select: null };
+    } else {
+      props[notionField] = { rich_text: r(String(val)) };
+    }
+  }
+
+  return props;
 }
 
 function fromNotion(page) {
@@ -52,55 +98,25 @@ function fromNotion(page) {
   const getC = f => p[f]?.checkbox ?? false;
   const getP = f => p[f]?.phone_number || '';
 
-  return {
-    id:          page.id,
-    bookingId:   getR('預約ID'),   // ← 關鍵：讀回 bookingId
-    title:       getT('家訪表名稱'),
-    飼主姓名:    getR('飼主姓名'),
-    飼主電話:    getP('飼主電話'),
-    contact:     getR('緊急聯絡人'),
-    寵物名稱:    getR('寵物名稱'),
-    寵物種類:    getS('寵物種類'),
-    服務類型:    getS('服務類型'),
-    neutered:    getS('是否結紮'),
-    vaccine:     getS('疫苗驅蟲'),
-    withPets:    getS('可與其他寵物相處'),
-    snack:       getR('食物過敏'),
-    mealHabit:   getR('用餐習慣'),
-    personality: getR('個性描述'),
-    health:      getR('健康狀況/用藥'),
-    anxiety:     getS('分離焦慮'),
-    aggressive:  getS('攻擊性'),
-    special:     getR('特殊注意事項'),
-    vet:         getR('常去動物醫院'),
-    insurance:   getS('寵物保險'),
-    keyHandover: getR('鑰匙交付方式'),
-    done:        getC('家訪完成'),
-    // 各服務類型專屬欄位
-    mealNote:    getR('用餐習慣'),
-    withKids:    '',
-    carReact:    '',
-    dogReact:    '',
-    streetReact: '',
-    sleepHabit:  '',
-    destructive: '',
-    timeSlot:    '',
-    restArea:    '',
-    cleanArea:   '',
-    catLitter:   '',
-    comfort:     '',
-    extraService:'',
-    keyHandover: getR('鑰匙交付方式'),
-    camera:      '',
-    walkRoute:   '',
-    humanReact:  '',
-    multiPet:    '',
-    skinAllergy: '',
-    shampoo:     '',
-    nailTrim:    '',
-    pawTrim:     '',
-    buttTrim:    '',
+  const result = {
+    id:       page.id,
+    bookingId: getR('預約ID'),
+    title:    getT('家訪表名稱'),
+    飼主姓名: getR('飼主姓名'),
+    飼主電話: getP('飼主電話'),
+    寵物名稱: getR('寵物名稱'),
+    寵物種類: getS('寵物種類'),
+    服務類型: getS('服務類型'),
+    done:     getC('家訪完成'),
   };
+
+  // 動態讀取所有家訪欄位
+  for (const [key, notionField] of Object.entries(FIELD_MAP)) {
+    if (!p[notionField]) continue;
+    result[key] = SELECT_FIELDS.has(key) ? getS(notionField) : getR(notionField);
+  }
+
+  return result;
 }
 
 export default async function handler(req, res) {

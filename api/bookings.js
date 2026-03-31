@@ -10,15 +10,9 @@ const headers = {
 function toNotion(b) {
   const dates = b.dates || [];
   const noteLines = [];
-
-  // 多天日期完整清單
-  if (dates.length > 1) {
-    noteLines.push(`📅 服務日期：${dates.join('、')}`);
-  }
-  // 多寵物完整資訊（名稱+種類）
+  if (dates.length > 1) noteLines.push(`📅 服務日期：${dates.join('、')}`);
   if (b.pets && b.pets.length > 0) {
-    const petInfo = b.pets.map(p => `${p.name}(${p.type})`).join('、');
-    noteLines.push(`🐾 寵物資訊：${petInfo}`);
+    noteLines.push(`🐾 寵物資訊：${b.pets.map(p => `${p.name}(${p.type})`).join('、')}`);
   }
   if (b.notes) noteLines.push(b.notes);
 
@@ -53,25 +47,19 @@ function fromNotion(page) {
   const getD  = f => p[f]?.date?.start || '';
   const getP  = f => p[f]?.phone_number || '';
   const getSt = f => p[f]?.status?.name || '';
-
   const statusMap = { '完成': 'completed', '進行中': 'confirmed', '未開始': 'pending' };
 
   const rawNote = getR('備註');
-  let dates = [];
-  let pets = [];
-  let cleanNotes = rawNote;
+  let dates = [], pets = [], cleanNotes = rawNote;
 
-  // 解析多天日期
   const dateLineMatch = rawNote.match(/^📅 服務日期：([^\n]+)/m);
   if (dateLineMatch) {
     dates = dateLineMatch[1].split('、').map(d => d.trim()).filter(Boolean);
   } else {
-    const start = getD('服務開始日');
-    const end   = getD('服務結束日');
+    const start = getD('服務開始日'), end = getD('服務結束日');
     if (start) dates = (end && end !== start) ? [start, end] : [start];
   }
 
-  // 解析多寵物資訊（名稱+種類）
   const petLineMatch = rawNote.match(/🐾 寵物資訊：([^\n]+)/m);
   if (petLineMatch) {
     pets = petLineMatch[1].split('、').map(s => {
@@ -79,35 +67,26 @@ function fromNotion(page) {
       return m ? { name: m[1].trim(), type: m[2].trim() } : { name: s.trim(), type: '其他' };
     });
   } else {
-    // 備援：從欄位還原
     const petNames = getR('寵物名稱').split('、').filter(Boolean);
     const petType  = getS('寵物種類');
     pets = petNames.map((name, i) => ({ name, type: i === 0 ? petType : '其他' }));
   }
 
-  // 清理備註顯示內容（移除系統標記行）
   cleanNotes = rawNote
     .replace(/^📅 服務日期：[^\n]+\n?/m, '')
     .replace(/^🐾 寵物資訊：[^\n]+\n?/m, '')
     .trim();
 
   return {
-    id:              page.id,
-    title:           getT('預約名稱'),
-    ownerName:       getR('飼主姓名'),
-    ownerPhone:      getP('飼主電話'),
-    pets,
-    serviceType:     getS('服務類型'),
-    dates,
-    timeOfDay:       getS('時段'),
-    appointmentTime: getR('指定時間'),
-    duration:        getN('服務時長(分鐘)'),
-    price:           getN('服務金額'),
-    paid:            getS('付款狀態') === '已付款',
-    status:          statusMap[getSt('預約狀態')] || 'pending',
-    address:         getR('服務地址'),
-    notes:           cleanNotes,
-    hasVisitForm:    getC('家訪表'),
+    id: page.id, title: getT('預約名稱'),
+    ownerName: getR('飼主姓名'), ownerPhone: getP('飼主電話'),
+    pets, serviceType: getS('服務類型'), dates,
+    timeOfDay: getS('時段'), appointmentTime: getR('指定時間'),
+    duration: getN('服務時長(分鐘)'), price: getN('服務金額'),
+    paid: getS('付款狀態') === '已付款',
+    status: statusMap[getSt('預約狀態')] || 'pending',
+    address: getR('服務地址'), notes: cleanNotes,
+    hasVisitForm: getC('家訪表'),
   };
 }
 
@@ -120,8 +99,7 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
-        method: 'POST', headers,
-        body: JSON.stringify({ page_size: 100 }),
+        method: 'POST', headers, body: JSON.stringify({ page_size: 100 }),
       });
       const data = await r.json();
       if (!r.ok) return res.status(r.status).json(data);
@@ -149,11 +127,14 @@ export default async function handler(req, res) {
       return res.json(fromNotion(data));
     }
 
+    // ➂ 修正：真實刪除（移入垃圾桶）而非只封存
     if (req.method === 'DELETE') {
       const { id } = req.body;
+      // 先封存（archived），Notion API 不支援直接永久刪除
+      // 但封存後 Notion 介面會移至垃圾桶，視覺上等同刪除
       const r = await fetch(`https://api.notion.com/v1/pages/${id}`, {
         method: 'PATCH', headers,
-        body: JSON.stringify({ archived: true }),
+        body: JSON.stringify({ archived: true, in_trash: true }),
       });
       const data = await r.json();
       if (!r.ok) return res.status(r.status).json(data);

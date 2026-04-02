@@ -50,7 +50,7 @@ const FIELD_MAP = {
   nailTrim:    '剪指甲',
   pawTrim:     '修腳底毛',
   buttTrim:    '修屁股毛',
-  // 圖片
+  // 圖片（儲存逗號分隔的 Cloudinary URL，遠短於 2000 字元限制）
   imageUrls:   '圖片網址',
 };
 

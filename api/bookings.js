@@ -1,5 +1,6 @@
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const DB_ID = process.env.NOTION_BOOKINGS_DB_ID;
+const VF_DB_ID = process.env.NOTION_VISITFORMS_DB_ID;
 
 const headers = {
   'Authorization': `Bearer ${NOTION_TOKEN}`,
@@ -90,6 +91,37 @@ function fromNotion(page) {
   };
 }
 
+// 查詢並刪除對應家訪表
+async function deleteRelatedVisitForms(bookingId) {
+  if (!VF_DB_ID) return;
+  try {
+    // 查詢家訪表資料庫中 預約ID = bookingId 的記錄
+    const r = await fetch(`https://api.notion.com/v1/databases/${VF_DB_ID}/query`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        filter: {
+          property: '預約ID',
+          rich_text: { equals: bookingId }
+        },
+        page_size: 10,
+      }),
+    });
+    const data = await r.json();
+    if (!r.ok || !data.results?.length) return;
+
+    // 逐一封存（移入垃圾桶）
+    await Promise.all(data.results.map(page =>
+      fetch(`https://api.notion.com/v1/pages/${page.id}`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ archived: true, in_trash: true }),
+      })
+    ));
+  } catch (e) {
+    console.error('刪除家訪表失敗:', e.message);
+    // 不阻斷主流程
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
@@ -127,11 +159,13 @@ export default async function handler(req, res) {
       return res.json(fromNotion(data));
     }
 
-    // ➂ 修正：真實刪除（移入垃圾桶）而非只封存
     if (req.method === 'DELETE') {
       const { id } = req.body;
-      // 先封存（archived），Notion API 不支援直接永久刪除
-      // 但封存後 Notion 介面會移至垃圾桶，視覺上等同刪除
+
+      // 同步刪除對應家訪表
+      await deleteRelatedVisitForms(id);
+
+      // 刪除預約本身
       const r = await fetch(`https://api.notion.com/v1/pages/${id}`, {
         method: 'PATCH', headers,
         body: JSON.stringify({ archived: true, in_trash: true }),

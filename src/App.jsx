@@ -509,25 +509,70 @@ function DetailView({booking,hasSavedForm,onClose,onEdit,onDelete,onVisitForm}){
 }
 
 // ══════════════════════════════════════
-// VisitForm（圖片只在本地顯示）
+// VisitForm（Cloudinary 圖片上傳版）
 // ══════════════════════════════════════
 function VisitForm({booking,savedData,onSave,onClose,loading}){
   const [form,setForm]=useState(savedData||{});
   const metaKeys=["id","bookingId","title","飼主姓名","飼主電話","寵物名稱","寵物種類","服務類型","done"];
   const [editing,setEditing]=useState(!savedData||Object.keys(savedData).filter(k=>!metaKeys.includes(k)).length===0);
-  const [localImages,setLocalImages]=useState([]);
+  // 從 savedData 還原已儲存的圖片 URL
+  const [images,setImages]=useState(()=>{
+    const saved=savedData?.imageUrls;
+    if(!saved)return[];
+    return saved.split(',').filter(Boolean).map(url=>({url,uploading:false}));
+  });
+  const [uploadingCount,setUploadingCount]=useState(0);
   const fileRef=useRef();
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
   const sections=VISIT_FORMS[booking.serviceType]||VISIT_FORMS["到府照顧"];
 
-  const handleImageUpload=e=>{
+  const handleImageUpload=async(e)=>{
     const files=[...e.target.files];
-    files.forEach(file=>{
-      const reader=new FileReader();
-      reader.onload=ev=>setLocalImages(prev=>[...prev,{url:ev.target.result,name:file.name}]);
-      reader.readAsDataURL(file);
-    });
+    if(!files.length)return;
+    // 先用 placeholder 顯示上傳中狀態
+    const placeholders=files.map(f=>({url:"",uploading:true,name:f.name}));
+    setImages(prev=>[...prev,...placeholders]);
+    setUploadingCount(c=>c+files.length);
+
+    for(let i=0;i<files.length;i++){
+      const file=files[i];
+      try{
+        // 轉 base64
+        const base64=await new Promise((resolve,reject)=>{
+          const reader=new FileReader();
+          reader.onload=ev=>resolve(ev.target.result);
+          reader.onerror=reject;
+          reader.readAsDataURL(file);
+        });
+        // 上傳到 Cloudinary
+        const resp=await fetch('/api/upload-image',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({data:base64,filename:file.name}),
+        });
+        const result=await resp.json();
+        if(result.url){
+          setImages(prev=>{
+            // 用 URL 取代 placeholder
+            const idx=prev.findIndex(img=>img.uploading&&img.name===file.name);
+            if(idx===-1)return prev;
+            const next=[...prev];
+            next[idx]={url:result.url,uploading:false};
+            return next;
+          });
+        }
+      }catch(err){
+        // 上傳失敗移除 placeholder
+        setImages(prev=>prev.filter(img=>!(img.uploading&&img.name===file.name)));
+      }finally{
+        setUploadingCount(c=>c-1);
+      }
+    }
+    // 清空 input 讓同檔案可重選
+    e.target.value='';
   };
+
+  const removeImage=i=>setImages(prev=>prev.filter((_,idx)=>idx!==i));
 
   return(
     <div>
@@ -542,6 +587,7 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
         </div>
       </div>
       {!editing&&<div style={{background:"#F0F7F2",border:"1px solid #BFD9C8",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:13,color:C.green}}>👁️ 查看模式 — 點「編輯」可修改內容</div>}
+
       {sections.map(sec=>(
         <div key={sec.title} style={{marginBottom:16}}>
           <div style={{fontSize:13,fontWeight:700,color:C.accent,marginBottom:8,paddingBottom:5,borderBottom:`1px solid ${C.border}`}}>{sec.title}</div>
@@ -561,36 +607,51 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
         </div>
       ))}
 
-      {/* 📷 本地圖片（不存到 Notion，只在當次查看） */}
+      {/* 📷 家訪照片（Cloudinary 雲端儲存） */}
       <div style={{marginBottom:16}}>
-        <div style={{fontSize:13,fontWeight:700,color:C.accent,marginBottom:8,paddingBottom:5,borderBottom:`1px solid ${C.border}`}}>📷 家訪照片（本次拍攝）</div>
-        <div style={{fontSize:12,color:C.dim,marginBottom:8}}>💡 照片僅供本次查看，請另存至手機相簿保存</div>
-        {localImages.length>0&&(
+        <div style={{fontSize:13,fontWeight:700,color:C.accent,marginBottom:8,paddingBottom:5,borderBottom:`1px solid ${C.border}`}}>📷 家訪照片</div>
+        {images.length>0&&(
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:10}}>
-            {localImages.map((img,i)=>(
-              <div key={i} style={{position:"relative",borderRadius:8,overflow:"hidden",aspectRatio:"1",background:C.surface}}>
-                <img src={img.url} alt={img.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                <button onClick={()=>setLocalImages(p=>p.filter((_,idx)=>idx!==i))} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,.55)",color:"#fff",border:"none",borderRadius:"50%",width:24,height:24,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>✕</button>
+            {images.map((img,i)=>(
+              <div key={i} style={{position:"relative",borderRadius:8,overflow:"hidden",aspectRatio:"1",background:C.surface,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                {img.uploading
+                  ?<div style={{fontSize:12,color:C.dim,textAlign:"center",padding:8}}>⏳<br/>上傳中</div>
+                  :<img src={img.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
+                    onClick={()=>window.open(img.url,'_blank')}
+                  />
+                }
+                {!img.uploading&&(editing||true)&&(
+                  <button onClick={()=>removeImage(i)} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,.55)",color:"#fff",border:"none",borderRadius:"50%",width:24,height:24,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>✕</button>
+                )}
               </div>
             ))}
           </div>
         )}
+        {images.length===0&&!editing&&<div style={{color:C.dim,fontSize:13,marginBottom:8}}>尚未上傳照片</div>}
         <input ref={fileRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleImageUpload}/>
-        <button onClick={()=>fileRef.current.click()} style={{...btnG,fontSize:13,padding:"10px 16px"}}>📷 上傳照片</button>
+        <button onClick={()=>fileRef.current.click()} style={{...btnG,fontSize:13,padding:"10px 16px"}} disabled={uploadingCount>0}>
+          {uploadingCount>0?`⏳ 上傳中 (${uploadingCount})...`:"📷 上傳照片"}
+        </button>
       </div>
 
       {editing&&(
-        <button onClick={()=>onSave({
-          ...form,
-          id:savedData?.id,
-          title:`${(booking.pets||[]).map(p=>p.name).join("＆")} 家訪表`,
-          飼主姓名:booking.ownerName,
-          飼主電話:booking.ownerPhone,
-          寵物名稱:(booking.pets||[]).map(p=>p.name).join("、"),
-          寵物種類:booking.pets?.[0]?.type||"其他",
-          服務類型:booking.serviceType,
-          bookingId:booking.id,
-        })} style={{...btnP,width:"100%"}} disabled={loading}>{loading?"⏳ 儲存中...":"💾 儲存到 Notion"}</button>
+        <button onClick={()=>{
+          const validUrls=images.filter(img=>!img.uploading&&img.url).map(img=>img.url);
+          onSave({
+            ...form,
+            id:savedData?.id,
+            title:`${(booking.pets||[]).map(p=>p.name).join("＆")} 家訪表`,
+            飼主姓名:booking.ownerName,
+            飼主電話:booking.ownerPhone,
+            寵物名稱:(booking.pets||[]).map(p=>p.name).join("、"),
+            寵物種類:booking.pets?.[0]?.type||"其他",
+            服務類型:booking.serviceType,
+            bookingId:booking.id,
+            imageUrls:validUrls.join(','),
+          });
+        }} style={{...btnP,width:"100%"}} disabled={loading||uploadingCount>0}>
+          {loading?"⏳ 儲存中...":uploadingCount>0?"⏳ 等待圖片上傳完成...":"💾 儲存到 Notion"}
+        </button>
       )}
     </div>
   );

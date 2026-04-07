@@ -332,8 +332,8 @@ function BookingForm({initial,onSave,onCancel,loading}){
         <button onClick={onCancel} style={{...btnG,padding:"8px 14px",fontSize:14}}>✕</button>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
-        <div><label style={lbl}>飼主姓名 *</label><input style={inp} value={f.ownerName} onChange={e=>set("ownerName",e.target.value)} placeholder="例：王小明"/></div>
-        <div><label style={lbl}>飼主電話</label><input style={inp} value={f.ownerPhone} onChange={e=>set("ownerPhone",e.target.value)} placeholder="0912-345-678" type="tel"/></div>
+        <div><label style={lbl}>飼主姓名 *</label><ClearableInput value={f.ownerName} onChange={e=>set("ownerName",e.target.value)} placeholder="例：王小明"/></div>
+        <div><label style={lbl}>飼主電話</label><ClearableInput value={f.ownerPhone} onChange={e=>set("ownerPhone",e.target.value)} placeholder="0912-345-678" type="tel"/></div>
         <div>
           <label style={lbl}>🐾 寵物資訊 *</label>
           {f.pets.map((pet,i)=>(
@@ -378,8 +378,8 @@ function BookingForm({initial,onSave,onCancel,loading}){
             {Object.entries(STATUS_MAP).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
           </select>
         </div>
-        <div><label style={lbl}>服務地址</label><input style={inp} value={f.address} onChange={e=>set("address",e.target.value)} placeholder="台北市..."/></div>
-        <div><label style={lbl}>備註</label><textarea style={{...inp,minHeight:80,resize:"vertical"}} value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="飲食習慣、特殊行為、藥物需求..."/></div>
+        <div><label style={lbl}>服務地址</label><ClearableInput value={f.address} onChange={e=>set("address",e.target.value)} placeholder="台北市..."/></div>
+        <div><label style={lbl}>備註</label><ClearableTextarea value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="飲食習慣、特殊行為、藥物需求..."/></div>
         <button onClick={()=>{
           if(!f.ownerName||!f.dates||f.dates.length===0||!f.pets[0]?.name){alert("請填飼主姓名、至少一隻寵物名稱，並選擇日期");return;}
           onSave({...f,title:`${f.pets.map(p=>p.name).join("＆")} — ${f.serviceType}`});
@@ -509,19 +509,66 @@ function DetailView({booking,hasSavedForm,onClose,onEdit,onDelete,onVisitForm}){
 }
 
 // ══════════════════════════════════════
-// VisitForm（Cloudinary 圖片上傳版）
+// 清除按鈕輸入框元件
+// ══════════════════════════════════════
+function ClearableInput({value,onChange,placeholder,type,style}){
+  return(
+    <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+      <input
+        type={type||"text"}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{...inp,...style,paddingRight:value?38:13}}
+      />
+      {value&&(
+        <button
+          type="button"
+          onClick={()=>onChange({target:{value:""}})}
+          style={{position:"absolute",right:8,background:"none",border:"none",cursor:"pointer",
+            color:C.dim,fontSize:18,lineHeight:1,padding:"2px 4px",borderRadius:4,fontFamily:"inherit",
+            display:"flex",alignItems:"center",justifyContent:"center"}}
+        >×</button>
+      )}
+    </div>
+  );
+}
+
+function ClearableTextarea({value,onChange,placeholder,style}){
+  return(
+    <div style={{position:"relative"}}>
+      <textarea
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{...inp,minHeight:70,resize:"vertical",paddingRight:value?36:13,...style}}
+      />
+      {value&&(
+        <button
+          type="button"
+          onClick={()=>onChange({target:{value:""}})}
+          style={{position:"absolute",top:8,right:8,background:"none",border:"none",cursor:"pointer",
+            color:C.dim,fontSize:18,lineHeight:1,padding:"2px 4px",borderRadius:4,fontFamily:"inherit"}}
+        >×</button>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════
+// VisitForm（Cloudinary unsigned + 清除按鈕）
 // ══════════════════════════════════════
 function VisitForm({booking,savedData,onSave,onClose,loading}){
   const [form,setForm]=useState(savedData||{});
   const metaKeys=["id","bookingId","title","飼主姓名","飼主電話","寵物名稱","寵物種類","服務類型","done"];
   const [editing,setEditing]=useState(!savedData||Object.keys(savedData).filter(k=>!metaKeys.includes(k)).length===0);
-  // 從 savedData 還原已儲存的圖片 URL
   const [images,setImages]=useState(()=>{
     const saved=savedData?.imageUrls;
     if(!saved)return[];
     return saved.split(',').filter(Boolean).map(url=>({url,uploading:false}));
   });
   const [uploadingCount,setUploadingCount]=useState(0);
+  const [uploadError,setUploadError]=useState("");
   const fileRef=useRef();
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
   const sections=VISIT_FORMS[booking.serviceType]||VISIT_FORMS["到府照顧"];
@@ -529,46 +576,40 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
   const handleImageUpload=async(e)=>{
     const files=[...e.target.files];
     if(!files.length)return;
-    // 先用 placeholder 顯示上傳中狀態
-    const placeholders=files.map(f=>({url:"",uploading:true,name:f.name}));
-    setImages(prev=>[...prev,...placeholders]);
-    setUploadingCount(c=>c+files.length);
+    setUploadError("");
 
     for(let i=0;i<files.length;i++){
       const file=files[i];
+      const tempId=`uploading-${Date.now()}-${i}`;
+      // 加入上傳中 placeholder
+      setImages(prev=>[...prev,{url:"",uploading:true,tempId}]);
+      setUploadingCount(c=>c+1);
       try{
-        // 轉 base64
         const base64=await new Promise((resolve,reject)=>{
           const reader=new FileReader();
           reader.onload=ev=>resolve(ev.target.result);
           reader.onerror=reject;
           reader.readAsDataURL(file);
         });
-        // 上傳到 Cloudinary
         const resp=await fetch('/api/upload-image',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({data:base64,filename:file.name}),
+          body:JSON.stringify({data:base64}),
         });
         const result=await resp.json();
         if(result.url){
-          setImages(prev=>{
-            // 用 URL 取代 placeholder
-            const idx=prev.findIndex(img=>img.uploading&&img.name===file.name);
-            if(idx===-1)return prev;
-            const next=[...prev];
-            next[idx]={url:result.url,uploading:false};
-            return next;
-          });
+          setImages(prev=>prev.map(img=>img.tempId===tempId?{url:result.url,uploading:false}:img));
+        } else {
+          setImages(prev=>prev.filter(img=>img.tempId!==tempId));
+          setUploadError(`上傳失敗：${result.error||"請重試"}`);
         }
       }catch(err){
-        // 上傳失敗移除 placeholder
-        setImages(prev=>prev.filter(img=>!(img.uploading&&img.name===file.name)));
+        setImages(prev=>prev.filter(img=>img.tempId!==tempId));
+        setUploadError("上傳失敗，請檢查網路連線");
       }finally{
         setUploadingCount(c=>c-1);
       }
     }
-    // 清空 input 讓同檔案可重選
     e.target.value='';
   };
 
@@ -588,6 +629,7 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
       </div>
       {!editing&&<div style={{background:"#F0F7F2",border:"1px solid #BFD9C8",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:13,color:C.green}}>👁️ 查看模式 — 點「編輯」可修改內容</div>}
 
+      {/* 家訪問題 — 編輯時加上清除按鈕 */}
       {sections.map(sec=>(
         <div key={sec.title} style={{marginBottom:16}}>
           <div style={{fontSize:13,fontWeight:700,color:C.accent,marginBottom:8,paddingBottom:5,borderBottom:`1px solid ${C.border}`}}>{sec.title}</div>
@@ -596,10 +638,10 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
               <div key={fld.key}>
                 <label style={{...lbl,fontSize:12}}>{fld.label}</label>
                 {editing
-                  ?fld.type==="textarea"
-                    ?<textarea style={{...inp,minHeight:70,resize:"vertical"}} value={form[fld.key]||""} onChange={e=>set(fld.key,e.target.value)}/>
-                    :<input style={inp} value={form[fld.key]||""} onChange={e=>set(fld.key,e.target.value)}/>
-                  :<div style={{padding:"10px 13px",background:C.surface,borderRadius:10,fontSize:14,color:form[fld.key]?C.text:C.dim,border:`1px solid ${C.border}`,minHeight:42}}>{form[fld.key]||"（未填寫）"}</div>
+                  ? fld.type==="textarea"
+                    ? <ClearableTextarea value={form[fld.key]||""} onChange={e=>set(fld.key,e.target.value)} placeholder="請填寫..."/>
+                    : <ClearableInput value={form[fld.key]||""} onChange={e=>set(fld.key,e.target.value)} placeholder="請填寫..."/>
+                  : <div style={{padding:"10px 13px",background:C.surface,borderRadius:10,fontSize:14,color:form[fld.key]?C.text:C.dim,border:`1px solid ${C.border}`,minHeight:42,lineHeight:1.6}}>{form[fld.key]||"（未填寫）"}</div>
                 }
               </div>
             ))}
@@ -607,7 +649,7 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
         </div>
       ))}
 
-      {/* 📷 家訪照片（Cloudinary 雲端儲存） */}
+      {/* 📷 家訪照片 */}
       <div style={{marginBottom:16}}>
         <div style={{fontSize:13,fontWeight:700,color:C.accent,marginBottom:8,paddingBottom:5,borderBottom:`1px solid ${C.border}`}}>📷 家訪照片</div>
         {images.length>0&&(
@@ -615,27 +657,27 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
             {images.map((img,i)=>(
               <div key={i} style={{position:"relative",borderRadius:8,overflow:"hidden",aspectRatio:"1",background:C.surface,display:"flex",alignItems:"center",justifyContent:"center"}}>
                 {img.uploading
-                  ?<div style={{fontSize:12,color:C.dim,textAlign:"center",padding:8}}>⏳<br/>上傳中</div>
-                  :<img src={img.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
-                    onClick={()=>window.open(img.url,'_blank')}
-                  />
+                  ?<div style={{fontSize:11,color:C.dim,textAlign:"center",padding:8}}>⏳<br/>上傳中</div>
+                  :<img src={img.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onClick={()=>window.open(img.url,'_blank')}/>
                 }
-                {!img.uploading&&(editing||true)&&(
-                  <button onClick={()=>removeImage(i)} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,.55)",color:"#fff",border:"none",borderRadius:"50%",width:24,height:24,cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>✕</button>
+                {!img.uploading&&(
+                  <button onClick={()=>removeImage(i)} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,.55)",color:"#fff",border:"none",borderRadius:"50%",width:24,height:24,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>×</button>
                 )}
               </div>
             ))}
           </div>
         )}
+        {uploadError&&<div style={{color:C.red,fontSize:12,marginBottom:8}}>⚠️ {uploadError}</div>}
         {images.length===0&&!editing&&<div style={{color:C.dim,fontSize:13,marginBottom:8}}>尚未上傳照片</div>}
         <input ref={fileRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={handleImageUpload}/>
-        <button onClick={()=>fileRef.current.click()} style={{...btnG,fontSize:13,padding:"10px 16px"}} disabled={uploadingCount>0}>
+        <button onClick={()=>{setUploadError("");fileRef.current.click();}} style={{...btnG,fontSize:13,padding:"10px 16px"}} disabled={uploadingCount>0}>
           {uploadingCount>0?`⏳ 上傳中 (${uploadingCount})...`:"📷 上傳照片"}
         </button>
       </div>
 
       {editing&&(
         <button onClick={()=>{
+          if(uploadingCount>0)return;
           const validUrls=images.filter(img=>!img.uploading&&img.url).map(img=>img.url);
           onSave({
             ...form,
@@ -649,8 +691,8 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
             bookingId:booking.id,
             imageUrls:validUrls.join(','),
           });
-        }} style={{...btnP,width:"100%"}} disabled={loading||uploadingCount>0}>
-          {loading?"⏳ 儲存中...":uploadingCount>0?"⏳ 等待圖片上傳完成...":"💾 儲存到 Notion"}
+        }} style={{...btnP,width:"100%",opacity:uploadingCount>0?0.6:1}} disabled={loading||uploadingCount>0}>
+          {loading?"⏳ 儲存中...":uploadingCount>0?"⏳ 等待圖片上傳...":"💾 儲存到 Notion"}
         </button>
       )}
     </div>

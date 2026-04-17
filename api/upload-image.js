@@ -1,4 +1,4 @@
-const CLOUD_NAME   = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUD_NAME    = process.env.CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = 'pet_sitter'; // Cloudinary unsigned preset 名稱
 
 export default async function handler(req, res) {
@@ -9,23 +9,19 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { data } = req.body; // base64 字串，含 data:image/...;base64, 前綴
-
+    const { data } = req.body;
     if (!data) return res.status(400).json({ error: '缺少圖片資料' });
 
-    // 用 FormData 傳送到 Cloudinary（unsigned upload 不需要簽名）
-    const formData = new URLSearchParams();
-    formData.append('file', data);
-    formData.append('upload_preset', UPLOAD_PRESET);
-    formData.append('folder', 'pet-sitter');
+    // 使用 FormData（瀏覽器/Node 18+ 原生支援）
+    const body = new FormData();
+    body.append('file', data);
+    body.append('upload_preset', UPLOAD_PRESET);
+    // ⚠️ 不傳 folder，避免 "Display name cannot contain slashes" 錯誤
+    // folder 統一在 Cloudinary preset 裡設定
 
     const r = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString(),
-      }
+      { method: 'POST', body }
     );
 
     const result = await r.json();

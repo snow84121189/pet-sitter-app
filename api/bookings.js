@@ -28,6 +28,7 @@ function toNotion(b) {
     '指定時間':       { rich_text: [{ text: { content: b.appointmentTime || '' } }] },
     '服務時長(分鐘)': { number: b.duration || null },
     '服務金額':       { number: b.price || null },
+    '折扣':           { number: b.discount || 0 },
     '付款狀態':       { select: b.paid ? { name: '已付款' } : { name: '未付款' } },
     '預約狀態':       { status: { name: b.status === 'completed' ? '完成' : b.status === 'confirmed' ? '進行中' : '未開始' } },
     '服務地址':       { rich_text: [{ text: { content: b.address || '' } }] },
@@ -78,12 +79,16 @@ function fromNotion(page) {
     .replace(/^🐾 寵物資訊：[^\n]+\n?/m, '')
     .trim();
 
+  const price = getN('服務金額');
+  const discount = getN('折扣') || 0;
+  const finalPrice = price ? Math.round(price * (1 - discount / 100)) : price;
+
   return {
     id: page.id, title: getT('預約名稱'),
     ownerName: getR('飼主姓名'), ownerPhone: getP('飼主電話'),
     pets, serviceType: getS('服務類型'), dates,
     timeOfDay: getS('時段'), appointmentTime: getR('指定時間'),
-    duration: getN('服務時長(分鐘)'), price: getN('服務金額'),
+    duration: getN('服務時長(分鐘)'), price, discount, finalPrice,
     paid: getS('付款狀態') === '已付款',
     status: statusMap[getSt('預約狀態')] || 'pending',
     address: getR('服務地址'), notes: cleanNotes,
@@ -91,25 +96,18 @@ function fromNotion(page) {
   };
 }
 
-// 查詢並刪除對應家訪表
 async function deleteRelatedVisitForms(bookingId) {
   if (!VF_DB_ID) return;
   try {
-    // 查詢家訪表資料庫中 預約ID = bookingId 的記錄
     const r = await fetch(`https://api.notion.com/v1/databases/${VF_DB_ID}/query`, {
       method: 'POST', headers,
       body: JSON.stringify({
-        filter: {
-          property: '預約ID',
-          rich_text: { equals: bookingId }
-        },
+        filter: { property: '預約ID', rich_text: { equals: bookingId } },
         page_size: 10,
       }),
     });
     const data = await r.json();
     if (!r.ok || !data.results?.length) return;
-
-    // 逐一封存（移入垃圾桶）
     await Promise.all(data.results.map(page =>
       fetch(`https://api.notion.com/v1/pages/${page.id}`, {
         method: 'PATCH', headers,
@@ -118,7 +116,6 @@ async function deleteRelatedVisitForms(bookingId) {
     ));
   } catch (e) {
     console.error('刪除家訪表失敗:', e.message);
-    // 不阻斷主流程
   }
 }
 
@@ -130,8 +127,13 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      // 只查詢必要排序，加速回應
       const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
-        method: 'POST', headers, body: JSON.stringify({ page_size: 100 }),
+        method: 'POST', headers,
+        body: JSON.stringify({
+          page_size: 100,
+          sorts: [{ property: '服務開始日', direction: 'descending' }],
+        }),
       });
       const data = await r.json();
       if (!r.ok) return res.status(r.status).json(data);
@@ -161,11 +163,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'DELETE') {
       const { id } = req.body;
-
-      // 同步刪除對應家訪表
       await deleteRelatedVisitForms(id);
-
-      // 刪除預約本身
       const r = await fetch(`https://api.notion.com/v1/pages/${id}`, {
         method: 'PATCH', headers,
         body: JSON.stringify({ archived: true, in_trash: true }),

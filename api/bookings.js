@@ -127,7 +127,6 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      // 只查詢必要排序，加速回應
       const r = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
         method: 'POST', headers,
         body: JSON.stringify({

@@ -1,55 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 
 // ══════════════════════════════════════
-// 2026 完整國定假日（依人事行政總處公告）
+// 2026 完整國定假日
 // ══════════════════════════════════════
 const TW_HOLIDAYS = {
-  // 元旦
   "2026-01-01":{n:"元旦",t:"假"},
-  // 春節（2/14小年夜～2/22，共9天）
-  "2026-02-14":{n:"小年夜",t:"假"},
-  "2026-02-15":{n:"除夕",t:"假"},
-  "2026-02-16":{n:"除夕連假",t:"假"},
-  "2026-02-17":{n:"初一",t:"假"},
-  "2026-02-18":{n:"初二",t:"假"},
-  "2026-02-19":{n:"初三",t:"假"},
-  "2026-02-20":{n:"春節補假",t:"補"},
-  "2026-02-21":{n:"春節連假",t:"假"},
-  "2026-02-22":{n:"春節連假",t:"假"},
-  // 228（2/27-3/1）
-  "2026-02-27":{n:"228連假",t:"補"},
-  "2026-02-28":{n:"228紀念日",t:"假"},
-  "2026-03-01":{n:"228連假",t:"補"},
-  // 兒童節+清明（4/3-4/6）
-  "2026-04-03":{n:"兒童節補假",t:"補"},
-  "2026-04-04":{n:"兒童節",t:"假"},
-  "2026-04-05":{n:"清明節",t:"假"},
-  "2026-04-06":{n:"清明補假",t:"補"},
-  // 勞動節（5/1-5/3）
-  "2026-05-01":{n:"勞動節",t:"假"},
-  "2026-05-02":{n:"勞動節連假",t:"補"},
-  "2026-05-03":{n:"勞動節連假",t:"補"},
-  // 端午（6/19-6/21）
-  "2026-06-19":{n:"端午節",t:"假"},
-  "2026-06-20":{n:"端午連假",t:"補"},
-  "2026-06-21":{n:"端午連假",t:"補"},
-  // 中秋+教師節（9/25-9/28）
-  "2026-09-25":{n:"中秋節",t:"假"},
-  "2026-09-26":{n:"中秋連假",t:"補"},
-  "2026-09-27":{n:"中秋連假",t:"補"},
-  "2026-09-28":{n:"教師節",t:"假"},
-  // 國慶（10/9-10/11）
-  "2026-10-09":{n:"國慶連假",t:"補"},
-  "2026-10-10":{n:"國慶日",t:"假"},
-  "2026-10-11":{n:"國慶連假",t:"補"},
-  // 台灣光復（10/24-10/26）
-  "2026-10-24":{n:"光復節連假",t:"補"},
-  "2026-10-25":{n:"台灣光復節",t:"假"},
-  "2026-10-26":{n:"光復節補假",t:"補"},
-  // 行憲紀念日（12/25-12/27）
-  "2026-12-25":{n:"行憲紀念日",t:"假"},
-  "2026-12-26":{n:"行憲連假",t:"補"},
-  "2026-12-27":{n:"行憲連假",t:"補"},
+  "2026-02-14":{n:"小年夜",t:"假"},"2026-02-15":{n:"除夕",t:"假"},"2026-02-16":{n:"除夕連假",t:"假"},
+  "2026-02-17":{n:"初一",t:"假"},"2026-02-18":{n:"初二",t:"假"},"2026-02-19":{n:"初三",t:"假"},
+  "2026-02-20":{n:"春節補假",t:"補"},"2026-02-21":{n:"春節連假",t:"假"},"2026-02-22":{n:"春節連假",t:"假"},
+  "2026-02-27":{n:"228連假",t:"補"},"2026-02-28":{n:"228紀念日",t:"假"},"2026-03-01":{n:"228連假",t:"補"},
+  "2026-04-03":{n:"兒童節補假",t:"補"},"2026-04-04":{n:"兒童節",t:"假"},"2026-04-05":{n:"清明節",t:"假"},"2026-04-06":{n:"清明補假",t:"補"},
+  "2026-05-01":{n:"勞動節",t:"假"},"2026-05-02":{n:"勞動節連假",t:"補"},"2026-05-03":{n:"勞動節連假",t:"補"},
+  "2026-06-19":{n:"端午節",t:"假"},"2026-06-20":{n:"端午連假",t:"補"},"2026-06-21":{n:"端午連假",t:"補"},
+  "2026-09-25":{n:"中秋節",t:"假"},"2026-09-26":{n:"中秋連假",t:"補"},"2026-09-27":{n:"中秋連假",t:"補"},"2026-09-28":{n:"教師節",t:"假"},
+  "2026-10-09":{n:"國慶連假",t:"補"},"2026-10-10":{n:"國慶日",t:"假"},"2026-10-11":{n:"國慶連假",t:"補"},
+  "2026-10-24":{n:"光復節連假",t:"補"},"2026-10-25":{n:"台灣光復節",t:"假"},"2026-10-26":{n:"光復節補假",t:"補"},
+  "2026-12-25":{n:"行憲紀念日",t:"假"},"2026-12-26":{n:"行憲連假",t:"補"},"2026-12-27":{n:"行憲連假",t:"補"},
 };
 
 const COURSES=[
@@ -241,7 +207,7 @@ const api={
 // ══════════════════════════════════════
 // UI 元件
 // ══════════════════════════════════════
-function Modal({open,onClose,children,wide}){
+function Modal({open,onClose,children}){
   if(!open)return null;
   return(
     <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:1000,background:"rgba(74,55,40,.45)",backdropFilter:"blur(4px)",display:"flex",alignItems:"flex-end",justifyContent:"center",padding:0}}>
@@ -281,6 +247,53 @@ function ConfirmDialog({open,message,onConfirm,onCancel}){
   );
 }
 
+// ══════════════════════════════════════
+// 清除按鈕輸入框元件
+// ══════════════════════════════════════
+function ClearableInput({value,onChange,placeholder,type,style}){
+  return(
+    <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+      <input
+        type={type||"text"}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{...inp,...style,paddingRight:value?38:13}}
+      />
+      {value&&(
+        <button
+          type="button"
+          onClick={()=>onChange({target:{value:""}})}
+          style={{position:"absolute",right:8,background:"none",border:"none",cursor:"pointer",
+            color:C.dim,fontSize:18,lineHeight:1,padding:"2px 4px",borderRadius:4,fontFamily:"inherit",
+            display:"flex",alignItems:"center",justifyContent:"center"}}
+        >×</button>
+      )}
+    </div>
+  );
+}
+
+function ClearableTextarea({value,onChange,placeholder,style}){
+  return(
+    <div style={{position:"relative"}}>
+      <textarea
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{...inp,minHeight:70,resize:"vertical",paddingRight:value?36:13,...style}}
+      />
+      {value&&(
+        <button
+          type="button"
+          onClick={()=>onChange({target:{value:""}})}
+          style={{position:"absolute",top:8,right:8,background:"none",border:"none",cursor:"pointer",
+            color:C.dim,fontSize:18,lineHeight:1,padding:"2px 4px",borderRadius:4,fontFamily:"inherit"}}
+        >×</button>
+      )}
+    </div>
+  );
+}
+
 function DatePicker({selected,onChange}){
   const [viewMo,setViewMo]=useState(()=>{
     if(selected&&selected.length>0)return new Date(selected[0]+"T00:00:00");
@@ -316,15 +329,20 @@ function DatePicker({selected,onChange}){
 }
 
 // ══════════════════════════════════════
-// BookingForm（手機優化：單欄）
+// BookingForm（含折扣%）
 // ══════════════════════════════════════
 function BookingForm({initial,onSave,onCancel,loading}){
-  const blank={pets:[{name:"",type:"狗"}],ownerName:"",ownerPhone:"",dates:[],timeOfDay:"白天",appointmentTime:"",serviceType:"安親寄宿",duration:60,status:"pending",price:"",paid:false,notes:"",address:""};
-  const [f,setF]=useState(initial?{...initial,pets:initial.pets&&initial.pets.length>0?initial.pets:[{name:"",type:"狗"}]}:blank);
+  const blank={pets:[{name:"",type:"狗"}],ownerName:"",ownerPhone:"",dates:[],timeOfDay:"白天",appointmentTime:"",serviceType:"安親寄宿",duration:60,status:"pending",price:"",discount:0,paid:false,notes:"",address:""};
+  const [f,setF]=useState(initial?{...initial,pets:initial.pets&&initial.pets.length>0?initial.pets:[{name:"",type:"狗"}],discount:initial.discount||0}:blank);
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   const setPet=(i,k,v)=>setF(p=>{const pets=p.pets.map((pet,idx)=>idx===i?{...pet,[k]:v}:pet);return{...p,pets};});
   const addPet=()=>setF(p=>({...p,pets:[...p.pets,{name:"",type:"狗"}]}));
   const removePet=i=>setF(p=>({...p,pets:p.pets.filter((_,idx)=>idx!==i)}));
+
+  const price=Number(f.price)||0;
+  const discount=Number(f.discount)||0;
+  const finalPrice=Math.round(price*(1-discount/100));
+
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
@@ -363,7 +381,25 @@ function BookingForm({initial,onSave,onCancel,loading}){
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <div><label style={lbl}>時長（分鐘）</label><input style={inp} type="number" value={f.duration} onChange={e=>set("duration",+e.target.value)}/></div>
-          <div><label style={lbl}>服務金額（元）</label><input style={inp} type="number" value={f.price} onChange={e=>set("price",+e.target.value)} placeholder="1500"/></div>
+          <div><label style={lbl}>服務金額（元）</label><input style={inp} type="number" value={f.price} onChange={e=>set("price",e.target.value)} placeholder="1500"/></div>
+        </div>
+        <div>
+          <label style={lbl}>折扣 %（選填，0~100）</label>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <input style={{...inp,flex:1}} type="number" min="0" max="100" value={f.discount} onChange={e=>{
+              let v=Number(e.target.value);
+              if(isNaN(v))v=0;
+              if(v<0)v=0; if(v>100)v=100;
+              set("discount",v);
+            }} placeholder="0"/>
+            <span style={{color:C.muted,fontSize:14,flexShrink:0}}>%</span>
+          </div>
+          {price>0&&discount>0&&(
+            <div style={{marginTop:6,fontSize:13,color:C.accent}}>
+              💰 折扣後金額：<strong>NT$ {finalPrice.toLocaleString()}</strong>
+              <span style={{color:C.dim}}> （原價 NT$ {price.toLocaleString()} − {discount}%）</span>
+            </div>
+          )}
         </div>
         <div>
           <label style={lbl}>付款狀態</label>
@@ -382,7 +418,7 @@ function BookingForm({initial,onSave,onCancel,loading}){
         <div><label style={lbl}>備註</label><ClearableTextarea value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="飲食習慣、特殊行為、藥物需求..."/></div>
         <button onClick={()=>{
           if(!f.ownerName||!f.dates||f.dates.length===0||!f.pets[0]?.name){alert("請填飼主姓名、至少一隻寵物名稱，並選擇日期");return;}
-          onSave({...f,title:`${f.pets.map(p=>p.name).join("＆")} — ${f.serviceType}`});
+          onSave({...f,price:Number(f.price)||0,discount:Number(f.discount)||0,title:`${f.pets.map(p=>p.name).join("＆")} — ${f.serviceType}`});
         }} style={{...btnP,width:"100%"}} disabled={loading}>{loading?"⏳ 儲存中...":"💾 儲存"}</button>
       </div>
     </div>
@@ -444,27 +480,42 @@ function Calendar({bookings,onSelectDate,selectedDate}){
 }
 
 // ══════════════════════════════════════
-// BookingCard（手機優化）
+// BookingCard（含快速完成按鈕）
 // ══════════════════════════════════════
-function BookingCard({booking,onClick}){
+function BookingCard({booking,onClick,onQuickComplete}){
   const petStr=(booking.pets||[]).map(p=>`${PET_EMOJI[p.type]||"🐾"} ${p.name}`).join("・");
+  const showFinal=booking.discount>0&&booking.finalPrice!=null;
   return(
-    <div onClick={()=>onClick(booking)} style={{...cardSt,cursor:"pointer",padding:"14px 14px",borderLeft:`4px solid ${STATUS_MAP[booking.status]?.color||C.muted}`,transition:"box-shadow .15s"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontFamily:"'Noto Serif TC',serif",fontSize:15,fontWeight:700,color:C.text,marginBottom:2}}>{petStr}</div>
-          <div style={{fontSize:12,color:C.muted}}>{booking.ownerName} · {SERVICE_ICONS[booking.serviceType]} {booking.serviceType}</div>
+    <div style={{...cardSt,padding:"14px 14px",borderLeft:`4px solid ${STATUS_MAP[booking.status]?.color||C.muted}`,transition:"box-shadow .15s"}}>
+      <div onClick={()=>onClick(booking)} style={{cursor:"pointer"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Noto Serif TC',serif",fontSize:15,fontWeight:700,color:C.text,marginBottom:2}}>{petStr}</div>
+            <div style={{fontSize:12,color:C.muted}}>{booking.ownerName} · {SERVICE_ICONS[booking.serviceType]} {booking.serviceType}</div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0,marginLeft:8}}>
+            <span style={pill(STATUS_MAP[booking.status]?.color||C.muted)}>{STATUS_MAP[booking.status]?.label}</span>
+            <span style={{fontSize:11,color:booking.paid?C.green:C.orange,fontWeight:600}}>{booking.paid?"✅ 已付款":"⏳ 未付款"}</span>
+          </div>
         </div>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0,marginLeft:8}}>
-          <span style={pill(STATUS_MAP[booking.status]?.color||C.muted)}>{STATUS_MAP[booking.status]?.label}</span>
-          <span style={{fontSize:11,color:booking.paid?C.green:C.orange,fontWeight:600}}>{booking.paid?"✅ 已付款":"⏳ 未付款"}</span>
+        <div style={{display:"flex",flexWrap:"wrap",gap:8,fontSize:12,color:C.muted}}>
+          <span>📅 {(booking.dates||[]).length>1?`${booking.dates[0]} 等${booking.dates.length}天`:booking.dates?.[0]||""}</span>
+          <span>🌤 {booking.timeOfDay}{booking.appointmentTime?` ${booking.appointmentTime}`:""}</span>
+          {booking.price?(
+            <span style={{color:C.accent,fontWeight:600}}>
+              {showFinal?`NT$${booking.finalPrice.toLocaleString()}（折${booking.discount}%）`:`NT$${booking.price.toLocaleString()}`}
+            </span>
+          ):null}
         </div>
       </div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:8,fontSize:12,color:C.muted}}>
-        <span>📅 {(booking.dates||[]).length>1?`${booking.dates[0]} 等${booking.dates.length}天`:booking.dates?.[0]||""}</span>
-        <span>🌤 {booking.timeOfDay}{booking.appointmentTime?` ${booking.appointmentTime}`:""}</span>
-        {booking.price?<span style={{color:C.accent,fontWeight:600}}>NT${booking.price.toLocaleString()}</span>:null}
-      </div>
+      {/* ➂ 快速完成按鈕 */}
+      {booking.status!=="completed"&&booking.status!=="cancelled"&&(
+        <button onClick={(e)=>{e.stopPropagation();onQuickComplete(booking);}} style={{
+          marginTop:10,width:"100%",fontFamily:"inherit",cursor:"pointer",
+          background:`${C.green}15`,color:C.green,border:`1px solid ${C.green}55`,
+          borderRadius:10,padding:"8px 0",fontSize:13,fontWeight:600,
+        }}>✓ 標記為已完成</button>
+      )}
     </div>
   );
 }
@@ -472,8 +523,9 @@ function BookingCard({booking,onClick}){
 // ══════════════════════════════════════
 // DetailView
 // ══════════════════════════════════════
-function DetailView({booking,hasSavedForm,onClose,onEdit,onDelete,onVisitForm}){
+function DetailView({booking,hasSavedForm,onClose,onEdit,onDelete,onVisitForm,onQuickComplete}){
   const petStr=(booking.pets||[]).map(p=>`${PET_EMOJI[p.type]||"🐾"} ${p.name}`).join("・");
+  const showFinal=booking.discount>0&&booking.finalPrice!=null;
   const row=(l,v,color)=>v!=null&&v!==""?(<div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.border}`,fontSize:14}}><span style={{color:C.muted,flexShrink:0,marginRight:12}}>{l}</span><span style={{color:color||C.text,fontWeight:500,textAlign:"right"}}>{v}</span></div>):null;
   return(
     <div>
@@ -494,63 +546,21 @@ function DetailView({booking,hasSavedForm,onClose,onEdit,onDelete,onVisitForm}){
       {row("日期",(booking.dates||[]).join("、"))}
       {row("時段",`${booking.timeOfDay}${booking.appointmentTime?` ${booking.appointmentTime}`:""}`)}
       {row("時長",`${booking.duration} 分鐘`)}
-      {row("金額",booking.price?`NT$ ${booking.price?.toLocaleString()}`:null)}
+      {row("原價",booking.price?`NT$ ${booking.price?.toLocaleString()}`:null)}
+      {booking.discount>0&&row("折扣",`${booking.discount}%`,C.orange)}
+      {showFinal&&row("結算金額",`NT$ ${booking.finalPrice.toLocaleString()}`,C.green)}
       {row("地址",booking.address)}
       {booking.notes&&<div style={{marginTop:12,padding:"12px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`}}><div style={{fontSize:11,color:C.accent,marginBottom:4}}>📝 注意事項</div><div style={{fontSize:14,color:C.text,lineHeight:1.7}}>{booking.notes}</div></div>}
       <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:16}}>
+        {booking.status!=="completed"&&booking.status!=="cancelled"&&(
+          <button onClick={()=>onQuickComplete(booking)} style={{...btnP,width:"100%",background:`linear-gradient(135deg,${C.green},#8FB593)`}}>✓ 標記為已完成</button>
+        )}
         <button onClick={onVisitForm} style={{...btnP,width:"100%"}}>📋 {hasSavedForm?"查看家訪表 ✓":"填寫家訪表"}</button>
         <div style={{display:"flex",gap:10}}>
           <button onClick={onEdit} style={{...btnG,flex:1}}>✏️ 編輯</button>
           <button onClick={onDelete} style={{...btnD,flex:1}}>🗑 刪除</button>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ══════════════════════════════════════
-// 清除按鈕輸入框元件
-// ══════════════════════════════════════
-function ClearableInput({value,onChange,placeholder,type,style}){
-  return(
-    <div style={{position:"relative",display:"flex",alignItems:"center"}}>
-      <input
-        type={type||"text"}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        style={{...inp,...style,paddingRight:value?38:13}}
-      />
-      {value&&(
-        <button
-          type="button"
-          onClick={()=>onChange({target:{value:""}})}
-          style={{position:"absolute",right:8,background:"none",border:"none",cursor:"pointer",
-            color:C.dim,fontSize:18,lineHeight:1,padding:"2px 4px",borderRadius:4,fontFamily:"inherit",
-            display:"flex",alignItems:"center",justifyContent:"center"}}
-        >×</button>
-      )}
-    </div>
-  );
-}
-
-function ClearableTextarea({value,onChange,placeholder,style}){
-  return(
-    <div style={{position:"relative"}}>
-      <textarea
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        style={{...inp,minHeight:70,resize:"vertical",paddingRight:value?36:13,...style}}
-      />
-      {value&&(
-        <button
-          type="button"
-          onClick={()=>onChange({target:{value:""}})}
-          style={{position:"absolute",top:8,right:8,background:"none",border:"none",cursor:"pointer",
-            color:C.dim,fontSize:18,lineHeight:1,padding:"2px 4px",borderRadius:4,fontFamily:"inherit"}}
-        >×</button>
-      )}
     </div>
   );
 }
@@ -581,7 +591,6 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
     for(let i=0;i<files.length;i++){
       const file=files[i];
       const tempId=`uploading-${Date.now()}-${i}`;
-      // 加入上傳中 placeholder
       setImages(prev=>[...prev,{url:"",uploading:true,tempId}]);
       setUploadingCount(c=>c+1);
       try{
@@ -629,7 +638,6 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
       </div>
       {!editing&&<div style={{background:"#F0F7F2",border:"1px solid #BFD9C8",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:13,color:C.green}}>👁️ 查看模式 — 點「編輯」可修改內容</div>}
 
-      {/* 家訪問題 — 編輯時加上清除按鈕 */}
       {sections.map(sec=>(
         <div key={sec.title} style={{marginBottom:16}}>
           <div style={{fontSize:13,fontWeight:700,color:C.accent,marginBottom:8,paddingBottom:5,borderBottom:`1px solid ${C.border}`}}>{sec.title}</div>
@@ -789,6 +797,21 @@ function ServiceGuide({onClose}){
 }
 
 // ══════════════════════════════════════
+// 載入骨架（提升體感速度）
+// ══════════════════════════════════════
+function SkeletonCard(){
+  return(
+    <div style={{...cardSt,padding:"14px 14px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+        <div style={{width:"40%",height:16,background:C.surface,borderRadius:6}}/>
+        <div style={{width:60,height:20,background:C.surface,borderRadius:10}}/>
+      </div>
+      <div style={{width:"70%",height:12,background:C.surface,borderRadius:6}}/>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════
 // App
 // ══════════════════════════════════════
 export default function App(){
@@ -807,24 +830,31 @@ export default function App(){
   const [confirmDelete,setConfirmDelete]=useState(null);
   const [search,setSearch]=useState("");
   const [toast,setToast]=useState({show:false,msg:"",error:false});
-  // ➂ 收入篩選
-  const [incomeRange,setIncomeRange]=useState("month"); // month | all | custom
+  const [incomeRange,setIncomeRange]=useState("month");
   const [customStart,setCustomStart]=useState("");
   const [customEnd,setCustomEnd]=useState("");
   const [showIncomeFilter,setShowIncomeFilter]=useState(false);
 
   const showToast=(msg,error=false)=>{setToast({show:true,msg,error});setTimeout(()=>setToast({show:false,msg:"",error:false}),3000);};
 
+  // ➀ 平行載入 + 各自獨立失敗不影響整體
   useEffect(()=>{
-    Promise.all([api.getBookings(),api.getVisitForms()])
-      .then(([bs,vfs])=>{
-        setBookings(Array.isArray(bs)?bs:[]);
+    let bookingsLoaded=false, formsLoaded=false;
+    const checkDone=()=>{if(bookingsLoaded&&formsLoaded)setLoading(false);};
+
+    api.getBookings()
+      .then(bs=>setBookings(Array.isArray(bs)?bs:[]))
+      .catch(()=>showToast("預約資料載入失敗",true))
+      .finally(()=>{bookingsLoaded=true;checkDone();});
+
+    api.getVisitForms()
+      .then(vfs=>{
         const vfMap={};
         (Array.isArray(vfs)?vfs:[]).forEach(vf=>{if(vf.bookingId)vfMap[vf.bookingId]=vf;});
         setVisitForms(vfMap);
       })
-      .catch(()=>showToast("載入資料失敗，請重新整理",true))
-      .finally(()=>setLoading(false));
+      .catch(()=>{})
+      .finally(()=>{formsLoaded=true;checkDone();});
   },[]);
 
   const saveBooking=async(f)=>{
@@ -854,6 +884,22 @@ export default function App(){
     finally{setSaving(false);setConfirmDelete(null);}
   };
 
+  // ➂ 快速完成（不進入編輯頁）
+  const quickComplete=async(booking)=>{
+    // 樂觀更新：立即反映在畫面上
+    setBookings(bs=>bs.map(b=>b.id===booking.id?{...b,status:"completed",paid:true}:b));
+    setViewTarget(null);
+    try{
+      const updated=await api.updateBooking({...booking,status:"completed",paid:true});
+      setBookings(bs=>bs.map(b=>b.id===booking.id?updated:b));
+      showToast(`${booking.pets?.[0]?.name||"預約"} 已標記完成！`);
+    }catch{
+      // 失敗時還原
+      setBookings(bs=>bs.map(b=>b.id===booking.id?booking:b));
+      showToast("更新失敗，請再試一次",true);
+    }
+  };
+
   const saveVisitForm=async(formData)=>{
     setSaving(true);
     try{
@@ -865,18 +911,20 @@ export default function App(){
     finally{setSaving(false);}
   };
 
-  // ➂ 收入計算
+  // ➁ 收入計算（含折扣後金額）
   const today=new Date().toISOString().slice(0,10);
   const thisMonth=today.slice(0,7);
-  const calcIncome=(bs)=>bs.filter(b=>b.status==="completed"&&b.paid&&b.price).reduce((s,b)=>s+(b.price||0),0);
-  const incomeBookings=bookings.filter(b=>{
-    if(!b.status==="completed"||!b.paid||!b.price)return false;
-    const d=b.dates?.[0]||"";
-    if(incomeRange==="month")return d.startsWith(thisMonth);
-    if(incomeRange==="custom")return(!customStart||d>=customStart)&&(!customEnd||d<=customEnd);
-    return true; // all
-  });
-  const completedIncome=calcIncome(incomeRange==="all"?bookings:incomeRange==="month"?bookings.filter(b=>(b.dates?.[0]||"").startsWith(thisMonth)):bookings.filter(b=>{const d=b.dates?.[0]||"";return(!customStart||d>=customStart)&&(!customEnd||d<=customEnd);}));
+  const getEffectivePrice=b=>{
+    if(!b.price)return 0;
+    const discount=b.discount||0;
+    return discount>0?Math.round(b.price*(1-discount/100)):b.price;
+  };
+  const calcIncome=(bs)=>bs.filter(b=>b.status==="completed"&&b.paid&&b.price).reduce((s,b)=>s+getEffectivePrice(b),0);
+  const completedIncome=incomeRange==="all"
+    ?calcIncome(bookings)
+    :incomeRange==="month"
+    ?calcIncome(bookings.filter(b=>(b.dates?.[0]||"").startsWith(thisMonth)))
+    :calcIncome(bookings.filter(b=>{const d=b.dates?.[0]||"";return(!customStart||d>=customStart)&&(!customEnd||d<=customEnd);}));
 
   const dayBookings=selectedDate?bookings.filter(b=>(b.dates||[]).includes(selectedDate)):[];
   const listBookings=bookings
@@ -889,7 +937,7 @@ export default function App(){
   return(
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Noto Sans TC','PingFang TC',sans-serif",maxWidth:600,margin:"0 auto"}}>
       <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-      <style>{`*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}select option{background:#FDF8F2;color:#4A3728;}::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:${C.soft};border-radius:3px;}input[type=date],input[type=time]{color-scheme:light;}body{margin:0;}`}</style>
+      <style>{`*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}select option{background:#FDF8F2;color:#4A3728;}::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:${C.soft};border-radius:3px;}input[type=date],input[type=time]{color-scheme:light;}body{margin:0;}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
 
       <Toast message={toast.msg} show={toast.show} error={toast.error}/>
       <ConfirmDialog open={!!confirmDelete} message={`確定要刪除「${confirmDelete?.pets?.[0]?.name||""}」的預約嗎？`} onConfirm={doDelete} onCancel={()=>setConfirmDelete(null)}/>
@@ -905,19 +953,18 @@ export default function App(){
             <div style={{fontSize:10,color:C.dim,marginLeft:26}}>即時同步 Notion 🌿</div>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            {loading&&<div style={{fontSize:11,color:C.dim}}>⏳</div>}
             <button onClick={()=>setShowGuide(true)} style={{...btnG,fontSize:13,padding:"8px 12px"}}>📖</button>
           </div>
         </div>
 
-        {/* Stats — ➃ 固定字型大小 */}
+        {/* Stats */}
         <div style={{display:"flex",gap:6,marginBottom:12}}>
           {[
             {label:"總預約",val:String(bookings.length),c:C.accent},
             {label:"今日",val:String(bookings.filter(b=>(b.dates||[]).includes(today)).length),c:C.green},
             {label:"待確認",val:String(bookings.filter(b=>b.status==="pending").length),c:C.orange},
             {label:incomeRange==="month"?`${thisMonth.slice(5)}月收入`:"累積收入",val:`$${completedIncome.toLocaleString()}`,c:C.green,tap:true},
-          ].map((s,idx)=>(
+          ].map((s)=>(
             <div key={s.label} onClick={s.tap?()=>setShowIncomeFilter(!showIncomeFilter):undefined}
               style={{flex:1,textAlign:"center",background:C.card,border:`1px solid ${s.tap&&showIncomeFilter?C.accent:C.border}`,borderRadius:12,padding:"8px 4px",cursor:s.tap?"pointer":"default"}}>
               <div style={{fontSize:14,fontWeight:700,color:s.c,lineHeight:1.3,letterSpacing:"-0.3px"}}>{s.val}</div>
@@ -926,10 +973,10 @@ export default function App(){
           ))}
         </div>
 
-        {/* ➂ 收入篩選器 */}
+        {/* 收入篩選器 */}
         {showIncomeFilter&&(
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px",marginBottom:12}}>
-            <div style={{fontSize:12,color:C.muted,marginBottom:8}}>查看收入範圍</div>
+            <div style={{fontSize:12,color:C.muted,marginBottom:8}}>查看收入範圍（已套用折扣）</div>
             <div style={{display:"flex",gap:6,marginBottom:incomeRange==="custom"?10:0}}>
               {[{v:"month",l:"本月"},{v:"all",l:"全部"},{v:"custom",l:"自訂"}].map(o=>(
                 <button key={o.v} onClick={()=>setIncomeRange(o.v)} style={{fontFamily:"inherit",cursor:"pointer",flex:1,padding:"8px 0",fontSize:13,fontWeight:600,borderRadius:8,border:`1px solid ${incomeRange===o.v?C.accent:C.border}`,background:incomeRange===o.v?`${C.accent}18`:C.surface,color:incomeRange===o.v?C.accent:C.muted}}>{o.l}</button>
@@ -967,9 +1014,17 @@ export default function App(){
       {/* Content */}
       <div style={{padding:"14px 14px 80px"}}>
         {loading?(
-          <div style={{textAlign:"center",padding:"60px 20px",color:C.dim}}>
-            <div style={{fontSize:44,marginBottom:10}}>🐾</div>
-            <div style={{fontSize:14}}>從 Notion 載入資料中...</div>
+          <div>
+            {tab==="calendar"&&(
+              <div style={{...cardSt,marginBottom:12}}>
+                <div style={{display:"flex",justifyContent:"center",padding:"30px 0"}}>
+                  <div style={{fontSize:13,color:C.dim,animation:"pulse 1.4s ease-in-out infinite"}}>📅 載入月曆中...</div>
+                </div>
+              </div>
+            )}
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {[1,2,3].map(i=><SkeletonCard key={i}/>)}
+            </div>
           </div>
         ):tab==="calendar"?(
           <div>
@@ -1021,13 +1076,13 @@ export default function App(){
             </div>
             {listBookings.length===0
               ?<div style={{textAlign:"center",padding:"60px 20px",color:C.dim}}><div style={{fontSize:44,marginBottom:10}}>🐾</div><div>沒有符合的預約</div></div>
-              :<div style={{display:"flex",flexDirection:"column",gap:10}}>{listBookings.map(b=><BookingCard key={b.id} booking={b} onClick={setViewTarget}/>)}</div>
+              :<div style={{display:"flex",flexDirection:"column",gap:10}}>{listBookings.map(b=><BookingCard key={b.id} booking={b} onClick={setViewTarget} onQuickComplete={quickComplete}/>)}</div>
             }
           </div>
         )}
       </div>
 
-      {/* 底部新增按鈕（手機用） */}
+      {/* 底部固定導覽列 */}
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:600,background:C.surface,borderTop:`1px solid ${C.border}`,padding:"10px 14px",display:"flex",gap:10,zIndex:50}}>
         <button onClick={()=>setTab("calendar")} style={{fontFamily:"inherit",flex:1,padding:"10px 0",borderRadius:10,border:`1px solid ${tab==="calendar"?C.accent:C.border}`,background:tab==="calendar"?`${C.accent}18`:C.card,color:tab==="calendar"?C.accent:C.muted,fontSize:13,fontWeight:600,cursor:"pointer"}}>📅 月曆</button>
         <button onClick={()=>{setEditTarget(null);setShowForm(true);}} style={{...btnP,flex:2,padding:"10px 0",fontSize:14}}>＋ 新增預約</button>
@@ -1039,7 +1094,7 @@ export default function App(){
         <BookingForm initial={editTarget} onSave={saveBooking} onCancel={()=>{setShowForm(false);setEditTarget(null);}} loading={saving}/>
       </Modal>
       <Modal open={!!viewTarget&&!showForm&&!visitTarget} onClose={()=>setViewTarget(null)}>
-        {viewTarget&&<DetailView booking={viewTarget} hasSavedForm={!!visitForms[viewTarget.id]} onClose={()=>setViewTarget(null)} onEdit={()=>{setEditTarget(viewTarget);setShowForm(true);}} onDelete={()=>{setViewTarget(null);setConfirmDelete(viewTarget);}} onVisitForm={()=>setVisitTarget(viewTarget)}/>}
+        {viewTarget&&<DetailView booking={viewTarget} hasSavedForm={!!visitForms[viewTarget.id]} onClose={()=>setViewTarget(null)} onEdit={()=>{setEditTarget(viewTarget);setShowForm(true);}} onDelete={()=>{setViewTarget(null);setConfirmDelete(viewTarget);}} onVisitForm={()=>setVisitTarget(viewTarget)} onQuickComplete={quickComplete}/>}
       </Modal>
       <ModalWide open={!!visitTarget} onClose={()=>{if(!saving)setVisitTarget(null);}}>
         {visitTarget&&<VisitForm booking={visitTarget} savedData={visitForms[visitTarget.id]||null} onSave={saveVisitForm} onClose={()=>setVisitTarget(null)} loading={saving}/>}

@@ -583,6 +583,24 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
   const sections=VISIT_FORMS[booking.serviceType]||VISIT_FORMS["到府照顧"];
 
+  // ➁ 前端壓縮圖片（限制在 1200px / quality 0.8，確保 < 4MB）
+  const compressImage=(file)=>new Promise((resolve,reject)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const MAX=1200;
+      let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg',0.82));
+    };
+    img.onerror=reject;
+    img.src=url;
+  });
+
   const handleImageUpload=async(e)=>{
     const files=[...e.target.files];
     if(!files.length)return;
@@ -594,12 +612,8 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
       setImages(prev=>[...prev,{url:"",uploading:true,tempId}]);
       setUploadingCount(c=>c+1);
       try{
-        const base64=await new Promise((resolve,reject)=>{
-          const reader=new FileReader();
-          reader.onload=ev=>resolve(ev.target.result);
-          reader.onerror=reject;
-          reader.readAsDataURL(file);
-        });
+        // 壓縮後再轉 base64
+        const base64=await compressImage(file);
         const resp=await fetch('/api/upload-image',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
@@ -608,13 +622,13 @@ function VisitForm({booking,savedData,onSave,onClose,loading}){
         const result=await resp.json();
         if(result.url){
           setImages(prev=>prev.map(img=>img.tempId===tempId?{url:result.url,uploading:false}:img));
-        } else {
+        }else{
           setImages(prev=>prev.filter(img=>img.tempId!==tempId));
           setUploadError(`上傳失敗：${result.error||"請重試"}`);
         }
       }catch(err){
         setImages(prev=>prev.filter(img=>img.tempId!==tempId));
-        setUploadError("上傳失敗，請檢查網路連線");
+        setUploadError(`上傳失敗：${err.message||"請重試"}`);
       }finally{
         setUploadingCount(c=>c-1);
       }
@@ -835,6 +849,13 @@ export default function App(){
   const [customEnd,setCustomEnd]=useState("");
   const [showIncomeFilter,setShowIncomeFilter]=useState(false);
 
+  // ➀ 點統計數字快速跳清單
+  const jumpToList=(filter)=>{
+    setTab("list");
+    setStatusFilter(filter);
+    setShowIncomeFilter(false);
+  };
+
   const showToast=(msg,error=false)=>{setToast({show:true,msg,error});setTimeout(()=>setToast({show:false,msg:"",error:false}),3000);};
 
   // ➀ 平行載入 + 各自獨立失敗不影響整體
@@ -927,10 +948,11 @@ export default function App(){
     :calcIncome(bookings.filter(b=>{const d=b.dates?.[0]||"";return(!customStart||d>=customStart)&&(!customEnd||d<=customEnd);}));
 
   const dayBookings=selectedDate?bookings.filter(b=>(b.dates||[]).includes(selectedDate)):[];
+  // ➂ 依最新日期降冪排序
   const listBookings=bookings
     .filter(b=>statusFilter==="all"||b.status===statusFilter)
     .filter(b=>!search||b.pets?.some(p=>p.name.includes(search))||b.ownerName?.includes(search))
-    .sort((a,b)=>(a.dates?.[0]||"").localeCompare(b.dates?.[0]||""));
+    .sort((a,b)=>(b.dates?.[0]||"").localeCompare(a.dates?.[0]||""));
 
   const upcomingHolidays=Object.entries(TW_HOLIDAYS).filter(([d])=>d>=today).slice(0,3);
 
@@ -957,16 +979,20 @@ export default function App(){
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats — ➀ 點擊快速跳清單 */}
         <div style={{display:"flex",gap:6,marginBottom:12}}>
           {[
-            {label:"總預約",val:String(bookings.length),c:C.accent},
-            {label:"今日",val:String(bookings.filter(b=>(b.dates||[]).includes(today)).length),c:C.green},
-            {label:"待確認",val:String(bookings.filter(b=>b.status==="pending").length),c:C.orange},
-            {label:incomeRange==="month"?`${thisMonth.slice(5)}月收入`:"累積收入",val:`$${completedIncome.toLocaleString()}`,c:C.green,tap:true},
+            {label:"總預約",val:String(bookings.length),c:C.accent,filter:"all"},
+            {label:"今日",val:String(bookings.filter(b=>(b.dates||[]).includes(today)).length),c:C.green,filter:null},
+            {label:"待確認",val:String(bookings.filter(b=>b.status==="pending").length),c:C.orange,filter:"pending"},
+            {label:incomeRange==="month"?`${thisMonth.slice(5)}月收入`:"累積收入",val:`${completedIncome.toLocaleString()}`,c:C.green,income:true},
           ].map((s)=>(
-            <div key={s.label} onClick={s.tap?()=>setShowIncomeFilter(!showIncomeFilter):undefined}
-              style={{flex:1,textAlign:"center",background:C.card,border:`1px solid ${s.tap&&showIncomeFilter?C.accent:C.border}`,borderRadius:12,padding:"8px 4px",cursor:s.tap?"pointer":"default"}}>
+            <div key={s.label}
+              onClick={s.income?()=>setShowIncomeFilter(!showIncomeFilter):s.filter?()=>jumpToList(s.filter):undefined}
+              style={{flex:1,textAlign:"center",background:C.card,
+                border:`1px solid ${(s.income&&showIncomeFilter)||(s.filter&&tab==="list"&&statusFilter===s.filter)?C.accent:C.border}`,
+                borderRadius:12,padding:"8px 4px",cursor:s.income||s.filter?"pointer":"default",
+                transition:"border-color .15s"}}>
               <div style={{fontSize:14,fontWeight:700,color:s.c,lineHeight:1.3,letterSpacing:"-0.3px"}}>{s.val}</div>
               <div style={{fontSize:10,color:C.dim,marginTop:2}}>{s.label}</div>
             </div>

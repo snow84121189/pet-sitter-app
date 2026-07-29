@@ -523,7 +523,7 @@ function BookingCard({booking,onClick,onQuickComplete}){
 // ══════════════════════════════════════
 // DetailView
 // ══════════════════════════════════════
-function DetailView({booking,hasSavedForm,onClose,onEdit,onDelete,onVisitForm,onQuickComplete}){
+function DetailView({booking,hasSavedForm,onClose,onEdit,onDelete,onVisitForm,onQuickComplete,onCopy}){
   const petStr=(booking.pets||[]).map(p=>`${PET_EMOJI[p.type]||"🐾"} ${p.name}`).join("・");
   const showFinal=booking.discount>0&&booking.finalPrice!=null;
   const row=(l,v,color)=>v!=null&&v!==""?(<div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.border}`,fontSize:14}}><span style={{color:C.muted,flexShrink:0,marginRight:12}}>{l}</span><span style={{color:color||C.text,fontWeight:500,textAlign:"right"}}>{v}</span></div>):null;
@@ -558,8 +558,9 @@ function DetailView({booking,hasSavedForm,onClose,onEdit,onDelete,onVisitForm,on
         <button onClick={onVisitForm} style={{...btnP,width:"100%"}}>📋 {hasSavedForm?"查看家訪表 ✓":"填寫家訪表"}</button>
         <div style={{display:"flex",gap:10}}>
           <button onClick={onEdit} style={{...btnG,flex:1}}>✏️ 編輯</button>
-          <button onClick={onDelete} style={{...btnD,flex:1}}>🗑 刪除</button>
+          <button onClick={onCopy} style={{...btnG,flex:1}}>📋 複製</button>
         </div>
+        <button onClick={onDelete} style={{...btnD,width:"100%"}}>🗑 刪除</button>
       </div>
     </div>
   );
@@ -849,11 +850,24 @@ export default function App(){
   const [customEnd,setCustomEnd]=useState("");
   const [showIncomeFilter,setShowIncomeFilter]=useState(false);
 
-  // ➀ 點統計數字快速跳清單
-  const jumpToList=(filter)=>{
-    setTab("list");
-    setStatusFilter(filter);
+  // ➀ 點「今日」跳月曆並選取今天
+  const jumpToToday=()=>{
+    setTab("calendar");
+    setSelectedDate(today);
     setShowIncomeFilter(false);
+  };
+
+  // ➁ 複製預約（清空日期，其餘全部帶入）
+  const copyBooking=(booking)=>{
+    setEditTarget({
+      ...booking,
+      id:null,           // 清除 id → 變成新增
+      dates:[],          // 清空日期讓使用者重選
+      status:"pending",  // 狀態重設為待確認
+      paid:false,        // 付款重設
+    });
+    setViewTarget(null);
+    setShowForm(true);
   };
 
   const showToast=(msg,error=false)=>{setToast({show:true,msg,error});setTimeout(()=>setToast({show:false,msg:"",error:false}),3000);};
@@ -983,15 +997,15 @@ export default function App(){
         <div style={{display:"flex",gap:6,marginBottom:12}}>
           {[
             {label:"總預約",val:String(bookings.length),c:C.accent,filter:"all"},
-            {label:"今日",val:String(bookings.filter(b=>(b.dates||[]).includes(today)).length),c:C.green,filter:null},
+            {label:"今日",val:String(bookings.filter(b=>(b.dates||[]).includes(today)).length),c:C.green,action:jumpToToday},
             {label:"待確認",val:String(bookings.filter(b=>b.status==="pending").length),c:C.orange,filter:"pending"},
             {label:incomeRange==="month"?`${thisMonth.slice(5)}月收入`:"累積收入",val:`${completedIncome.toLocaleString()}`,c:C.green,income:true},
           ].map((s)=>(
             <div key={s.label}
-              onClick={s.income?()=>setShowIncomeFilter(!showIncomeFilter):s.filter?()=>jumpToList(s.filter):undefined}
+              onClick={s.income?()=>setShowIncomeFilter(!showIncomeFilter):s.action?s.action:s.filter?()=>jumpToList(s.filter):undefined}
               style={{flex:1,textAlign:"center",background:C.card,
                 border:`1px solid ${(s.income&&showIncomeFilter)||(s.filter&&tab==="list"&&statusFilter===s.filter)?C.accent:C.border}`,
-                borderRadius:12,padding:"8px 4px",cursor:s.income||s.filter?"pointer":"default",
+                borderRadius:12,padding:"8px 4px",cursor:s.income||s.action||s.filter?"pointer":"default",
                 transition:"border-color .15s"}}>
               <div style={{fontSize:14,fontWeight:700,color:s.c,lineHeight:1.3,letterSpacing:"-0.3px"}}>{s.val}</div>
               <div style={{fontSize:10,color:C.dim,marginTop:2}}>{s.label}</div>
@@ -1120,7 +1134,7 @@ export default function App(){
         <BookingForm initial={editTarget} onSave={saveBooking} onCancel={()=>{setShowForm(false);setEditTarget(null);}} loading={saving}/>
       </Modal>
       <Modal open={!!viewTarget&&!showForm&&!visitTarget} onClose={()=>setViewTarget(null)}>
-        {viewTarget&&<DetailView booking={viewTarget} hasSavedForm={!!visitForms[viewTarget.id]} onClose={()=>setViewTarget(null)} onEdit={()=>{setEditTarget(viewTarget);setShowForm(true);}} onDelete={()=>{setViewTarget(null);setConfirmDelete(viewTarget);}} onVisitForm={()=>setVisitTarget(viewTarget)} onQuickComplete={quickComplete}/>}
+        {viewTarget&&<DetailView booking={viewTarget} hasSavedForm={!!visitForms[viewTarget.id]} onClose={()=>setViewTarget(null)} onEdit={()=>{setEditTarget(viewTarget);setShowForm(true);}} onDelete={()=>{setViewTarget(null);setConfirmDelete(viewTarget);}} onVisitForm={()=>setVisitTarget(viewTarget)} onQuickComplete={quickComplete} onCopy={()=>copyBooking(viewTarget)}/>}
       </Modal>
       <ModalWide open={!!visitTarget} onClose={()=>{if(!saving)setVisitTarget(null);}}>
         {visitTarget&&<VisitForm booking={visitTarget} savedData={visitForms[visitTarget.id]||null} onSave={saveVisitForm} onClose={()=>setVisitTarget(null)} loading={saving}/>}

@@ -346,7 +346,7 @@ function BookingForm({initial,onSave,onCancel,loading}){
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-        <h2 style={{color:C.text,fontFamily:"'Noto Serif TC',serif",fontSize:18,margin:0}}>{initial?"✏️ 編輯預約":"➕ 新增預約"}</h2>
+        <h2 style={{color:C.text,fontFamily:"'Noto Serif TC',serif",fontSize:18,margin:0}}>{initial?.id?"✏️ 編輯預約":initial?"📋 複製預約":"➕ 新增預約"}</h2>
         <button onClick={onCancel} style={{...btnG,padding:"8px 14px",fontSize:14}}>✕</button>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -895,7 +895,7 @@ export default function App(){
   const saveBooking=async(f)=>{
     setSaving(true);
     try{
-      if(editTarget){
+      if(editTarget?.id){
         const updated=await api.updateBooking({...f,id:editTarget.id});
         setBookings(bs=>bs.map(b=>b.id===editTarget.id?updated:b));
         showToast("預約已更新！");
